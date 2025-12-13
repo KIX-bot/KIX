@@ -46,8 +46,10 @@ for f in res.get("data", []):
 
     if is_target_arrival(t):
         found = True
+        mark = "⚠️ " if (t.hour >= 23 or t.hour < 2) else ""
+        
         msg += (
-            f"便名: {f['flight']['iata']}\n"
+            f"{mark}便名: {f['flight']['iata']}\n"
             f"到着予定: {t.strftime('%H:%M')}\n"
             f"遅延: {delay}分\n\n"
         )
