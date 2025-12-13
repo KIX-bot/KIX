@@ -1,0 +1,28 @@
+name: KIX Delay Notify
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # 日本時間19:00
+    - cron: '0 12 * * *'  # 日本時間21:00
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script
+        env:
+          AVIATION_API_KEY: ${{ secrets.AVIATION_API_KEY }}
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
+          USER_ID: ${{ secrets.USER_ID }}
+        run: python main.py
