@@ -22,6 +22,24 @@ def send_line(msg):
 def is_target_arrival(t):
     return t >= time(21, 0) or t <= time(2, 0)
 
+# ===== ★ 空港名 日本語変換 =====
+airport_map = {
+    "Tokyo Haneda International Airport": "東京（羽田）",
+    "Tokyo Narita International Airport": "東京（成田）",
+    "New Chitose Airport": "札幌（新千歳）",
+    "Fukuoka Airport": "福岡",
+    "Naha Airport": "沖縄（那覇）",
+    "Seoul Incheon International Airport": "ソウル（仁川）",
+    "Gimpo International Airport": "ソウル（金浦）",
+    "Taiwan Taoyuan International Airport": "台北（桃園）",
+    "Shanghai Pudong International Airport": "上海（浦東）",
+    "Hong Kong International Airport": "香港"
+    "Los Angeles International Airport":　"ロサンゼルス",
+    "Chicago O'Hare International Airport": "シカゴ（オヘア）",
+    "San Francisco International Airport": "サンフランシスコ",
+    "John F Kennedy International Airport": "ニューヨーク（JFK）"
+}
+
 url = "http://api.aviationstack.com/v1/flights"
 params = {
     "access_key": AVIATION_API_KEY,
@@ -54,8 +72,13 @@ for f in res.get("data", []):
     if is_target_arrival(t):
         found = True
 
-        # 出発地
-        city = dep.get("airport") or dep.get("iata") or "不明"
+        # ===== ★ 出発地 日本語化 =====
+        airport_name = dep.get("airport")
+        iata = dep.get("iata")
+
+        city = airport_map.get(airport_name)
+        if not city:
+            city = iata if iata else "不明"
 
         # ターミナル
         terminal_text = f"T{terminal}" if terminal else "-"
