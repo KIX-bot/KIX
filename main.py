@@ -33,8 +33,8 @@ airport_map = {
     "Gimpo International Airport": "ソウル（金浦）",
     "Taiwan Taoyuan International Airport": "台北（桃園）",
     "Shanghai Pudong International Airport": "上海（浦東）",
-    "Hong Kong International Airport": "香港"
-    "Los Angeles International Airport":　"ロサンゼルス",
+    "Hong Kong International Airport": "香港",
+    "Los Angeles International Airport": "ロサンゼルス",
     "Chicago O'Hare International Airport": "シカゴ（オヘア）",
     "San Francisco International Airport": "サンフランシスコ",
     "John F Kennedy International Airport": "ニューヨーク（JFK）"
