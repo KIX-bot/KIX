@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import json
 import os
 
@@ -22,7 +22,7 @@ def send_line(msg):
 def is_target_arrival(t):
     return t >= time(21, 0) or t <= time(2, 0)
 
-# ===== ★ 空港名 日本語変換 =====
+# ===== 空港名 日本語変換 =====
 airport_map = {
     "Tokyo Haneda International Airport": "東京（羽田）",
     "Tokyo Narita International Airport": "東京（成田）",
@@ -40,6 +40,14 @@ airport_map = {
     "John F Kennedy International Airport": "ニューヨーク（JFK）"
 }
 
+# ===== ステータス日本語化 =====
+status_map = {
+    "active": "運行中",
+    "landed": "到着済み",
+    "scheduled": "出発前",
+    "cancelled": "欠航"
+}
+
 url = "http://api.aviationstack.com/v1/flights"
 params = {
     "access_key": AVIATION_API_KEY,
@@ -47,59 +55,86 @@ params = {
     "flight_status": "active"
 }
 
-res = requests.get(url, params=params).json()
+try:
+    res = requests.get(url, params=params, timeout=10).json()
+except:
+    send_line("API取得エラー")
+    exit()
 
 msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
 found = False
 
-for f in res.get("data", []):
+# ===== 遅延順に並び替え =====
+flights = sorted(
+    res.get("data", []),
+    key=lambda x: x.get("arrival", {}).get("delay") or 0,
+    reverse=True
+)
+
+for f in flights:
     arr = f.get("arrival", {})
     dep = f.get("departure", {})
+
     delay = arr.get("delay")
     scheduled = arr.get("scheduled")
     estimated = arr.get("estimated")
     terminal = arr.get("terminal")
     status = f.get("flight_status")
 
-    if not delay or not scheduled:
+    # ===== scheduledがないものは除外 =====
+    if not scheduled:
         continue
 
+    # ===== JSTに変換 =====
     try:
-        t = datetime.fromisoformat(scheduled.replace("Z","")).time()
+        t_utc = datetime.fromisoformat(scheduled.replace("Z", ""))
+        t_jst = t_utc + timedelta(hours=9)
+        t = t_jst.time()
     except:
         continue
 
-    if is_target_arrival(t):
-        found = True
+    # ===== 時間帯チェック =====
+    if not is_target_arrival(t):
+        continue
 
-        # ===== ★ 出発地 日本語化 =====
-        airport_name = dep.get("airport")
-        iata = dep.get("iata")
+    # ===== 遅延15分未満は除外（ノイズ削減） =====
+    if not delay or delay < 15:
+        continue
 
-        city = airport_map.get(airport_name)
-        if not city:
-            city = iata if iata else "不明"
+    found = True
 
-        # ターミナル
-        terminal_text = f"T{terminal}" if terminal else "-"
+    # ===== 出発地 =====
+    airport_name = dep.get("airport")
+    iata = dep.get("iata")
 
-        # 遅延後時刻
-        if estimated:
-            try:
-                est = datetime.fromisoformat(estimated.replace("Z","")).time()
-                delay_time = est.strftime('%H:%M')
-            except:
-                delay_time = "不明"
-        else:
+    city = airport_map.get(airport_name)
+    if not city:
+        city = iata if iata else "不明"
+
+    # ===== ステータス =====
+    status_jp = status_map.get(status, status)
+
+    # ===== ターミナル =====
+    terminal_text = f" / T{terminal}" if terminal else ""
+
+    # ===== 遅延後時刻 =====
+    if estimated:
+        try:
+            est = datetime.fromisoformat(estimated.replace("Z", "")) + timedelta(hours=9)
+            delay_time = est.strftime('%H:%M')
+        except:
             delay_time = "不明"
+    else:
+        delay_time = "不明"
 
-        msg += (
-            f"✈️ {f.get('flight', {}).get('iata', '不明')}  | {city}\n"
-            f"定刻: {t.strftime('%H:%M')} → 遅延: {delay_time}\n"
-            f"遅延: {delay}分 / {status} / {terminal_text}\n\n"
-        )
+    msg += (
+        f"✈️ {f.get('flight', {}).get('iata', '不明')} | {city}\n"
+        f"定刻: {t.strftime('%H:%M')} → {delay_time}\n"
+        f"遅延: {delay}分 / {status_jp}{terminal_text}\n\n"
+    )
 
+# ===== 通知 =====
 if found:
     send_line(msg)
 else:
-    send_line("対象時間帯の遅延便はありません。")
+    send_line("対象時間帯（21:00〜翌2:00）の遅延便はありません。")
