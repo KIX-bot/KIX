@@ -20,9 +20,9 @@ def send_line(msg):
     requests.post(url, headers=headers, data=json.dumps(data))
 
 def is_target_arrival(t):
-    return t >= time(22, 0) or t <= time(2, 0)
+    return t >= time(21, 0) or t <= time(2, 0)
 
-# ===== 都市（日本語）=====
+# ===== 都市 =====
 CITY_MAP = {
     "HND": "東京（羽田）",
     "NRT": "東京（成田）",
@@ -35,13 +35,7 @@ CITY_MAP = {
     "PVG": "上海（浦東）",
     "SIN": "シンガポール",
     "LAX": "ロサンゼルス",
-    "CNS": "ケアンズ",
-    "SYD": "シドニー",
-    "BKK": "バンコク",
-    "HKG": "香港",
-    "DXB": "ドバイ",
-    "CDG": "パリ",
-    "LHR": "ロンドン"
+    "CNS": "ケアンズ"
 }
 
 # ===== ステータス =====
@@ -51,7 +45,7 @@ STATUS_MAP = {
     "scheduled": "定刻"
 }
 
-# ===== 航空会社（重要）=====
+# ===== 航空会社 =====
 AIRLINE_MAP = {
     "NH": ("ANA", "🟦"),
     "JL": ("JAL", "🔴"),
@@ -73,7 +67,7 @@ params = {
 
 res = requests.get(url, params=params).json()
 
-msg = "✈️ 関西国際空港 到着遅延便（22:00〜翌2:00）\n\n"
+msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
 found = False
 seen = set()
 
@@ -108,17 +102,25 @@ for f in res.get("data", []):
     terminal = arr.get("terminal") or "1"
     status = STATUS_MAP.get(f.get("flight_status"), "不明")
 
+    # ===== 時刻処理（修正版）=====
     scheduled_time = sched_dt.strftime("%H:%M")
+    estimated_time = "??:??"
 
     if estimated:
         try:
-            estimated_time = datetime.fromisoformat(
-                estimated.replace("Z","")
-            ).strftime("%H:%M")
+            est_dt = datetime.fromisoformat(estimated.replace("Z",""))
+            estimated_time = est_dt.strftime("%H:%M")
+
+            # delayを再計算（ズレ防止）
+            delay = int((est_dt - sched_dt).total_seconds() / 60)
+            delay = max(delay, 0)
+
         except:
-            estimated_time = "??:??"
-    else:
-        estimated_time = (sched_dt + timedelta(minutes=delay)).strftime("%H:%M")
+            pass
+
+    elif delay:
+        est_dt = sched_dt + timedelta(minutes=delay)
+        estimated_time = est_dt.strftime("%H:%M")
 
     # ===== 都市 =====
     city = CITY_MAP.get(dep.get("iata"), dep.get("iata") or "不明")
@@ -126,12 +128,17 @@ for f in res.get("data", []):
     # ===== 便名 =====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
-    # ===== 航空会社判定 =====
+    # ===== 航空会社 =====
     prefix = flight_no[:2]
     airline_name, airline_icon = AIRLINE_MAP.get(prefix, ("その他", "✈️"))
 
     # ===== 遅延アイコン =====
-    delay_icon = "⚠️" if delay >= 20 else ""
+    if delay >= 30:
+        delay_icon = "🚨"
+    elif delay >= 15:
+        delay_icon = "⚠️"
+    else:
+        delay_icon = ""
 
     msg += (
         f"{delay_icon} {airline_icon} {airline_name} {flight_no}　{city}\n"
@@ -142,4 +149,4 @@ for f in res.get("data", []):
 if found:
     send_line(msg.strip())
 else:
-    send_line("対象時間帯（22:00〜翌2:00）の遅延便はありません。")
+    send_line("対象時間帯（21:00〜翌2:00）の遅延便はありません。")
