@@ -24,62 +24,18 @@ def is_target_arrival(t):
 
 # ===== 都市 =====
 CITY_MAP = {
-    # ===== 日本 =====
-    "HND": "東京（羽田）",
-    "NRT": "東京（成田）",
-    "ITM": "大阪（伊丹）",
-    "CTS": "札幌（新千歳）",
-    "FUK": "福岡",
-    "OKA": "沖縄（那覇）",
-    "MMY": "宮古",
-    "ISG": "石垣",
-    "SDJ": "仙台",
-    "NGO": "名古屋（中部）",
-    "HIJ": "広島",
-    "KMI": "宮崎",
-    "KOJ": "鹿児島",
-
-    # ===== 韓国 =====
-    "ICN": "ソウル（仁川）",
-    "GMP": "ソウル（金浦）",
-    "PUS": "釜山",
-
-    # ===== 中国 =====
-    "PVG": "上海（浦東）",
-    "SHA": "上海（虹橋）",
-    "PEK": "北京（首都）",
-    "PKX": "北京（大興）",
-    "CAN": "広州",
-    "SZX": "深圳",
-    "CTU": "成都",
-
-    # ===== 台湾 =====
-    "TPE": "台北（桃園）",
-    "TSA": "台北（松山）",
-    "KHH": "高雄",
-
-    # ===== 香港・マカオ =====
-    "HKG": "香港",
-    "MFM": "マカオ",
-
-    # ===== 東南アジア =====
-    "SIN": "シンガポール",
-    "BKK": "バンコク（スワンナプーム）",
-    "DMK": "バンコク（ドンムアン）",
-    "KUL": "クアラルンプール",
-    "CGK": "ジャカルタ",
-    "MNL": "マニラ",
-    "HAN": "ハノイ",
-    "SGN": "ホーチミン",
-    "DPS": "デンパサール（バリ）",
-
-    # ===== 欧米（たまに来る） =====
-    "LAX": "ロサンゼルス",
-    "SFO": "サンフランシスコ",
-    "JFK": "ニューヨーク",
-    "CDG": "パリ",
-    "FRA": "フランクフルト",
-    "LHR": "ロンドン"
+    "HND": "東京（羽田）", "NRT": "東京（成田）", "ITM": "大阪（伊丹）",
+    "CTS": "札幌（新千歳）", "FUK": "福岡", "OKA": "沖縄（那覇）",
+    "MMY": "宮古", "ISG": "石垣", "SDJ": "仙台", "NGO": "名古屋（中部）",
+    "HIJ": "広島", "KMI": "宮崎", "KOJ": "鹿児島",
+    "ICN": "ソウル（仁川）", "GMP": "ソウル（金浦）", "PUS": "釜山",
+    "PVG": "上海（浦東）", "SHA": "上海（虹橋）", "PEK": "北京（首都）",
+    "PKX": "北京（大興）", "CAN": "広州", "SZX": "深圳",
+    "TPE": "台北（桃園）", "TSA": "台北（松山）", "KHH": "高雄",
+    "HKG": "香港", "MFM": "マカオ",
+    "SIN": "シンガポール", "BKK": "バンコク（スワンナプーム）",
+    "DMK": "バンコク（ドンムアン）", "KUL": "クアラルンプール",
+    "MNL": "マニラ", "HAN": "ハノイ", "SGN": "ホーチミン"
 }
 
 # ===== 航空会社 =====
@@ -89,13 +45,9 @@ AIRLINE_MAP = {
     "GK": "Jetstar",
     "MM": "Peach",
     "OZ": "アシアナ航空",
-    "KE": "大韓航空"
-}
-
-STATUS_MAP = {
-    "active": "運行中",
-    "landed": "到着済み",
-    "scheduled": "定刻"
+    "KE": "大韓航空",
+    "CX": "キャセイパシフィック",
+    "BR": "エバー航空"
 }
 
 url = "http://api.aviationstack.com/v1/flights"
@@ -106,7 +58,7 @@ params = {
 
 res = requests.get(url, params=params).json()
 
-msg = "✈️関西国際空港 到着遅延便✈️\n（21:00〜翌2:00）\n\n"
+msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
 found = False
 seen = set()
 
@@ -130,7 +82,7 @@ for f in res.get("data", []):
     if not is_target_arrival(sched_dt.time()):
         continue
 
-    # 重複排除
+    # ===== 重複排除 =====
     key = (scheduled, dep.get("iata"))
     if key in seen:
         continue
@@ -138,20 +90,19 @@ for f in res.get("data", []):
 
     estimated = arr.get("estimated")
     terminal = arr.get("terminal") or "1"
-    status = STATUS_MAP.get(f.get("flight_status"), "不明")
 
     # ===== 時刻 =====
-    if estimated:
-        try:
+    try:
+        if estimated:
             est_dt = datetime.fromisoformat(estimated.replace("Z",""))
-        except:
+        else:
             est_dt = sched_dt + timedelta(minutes=delay)
-    else:
+    except:
         est_dt = sched_dt + timedelta(minutes=delay)
 
     diff_min = int((est_dt - sched_dt).total_seconds() / 60)
 
-    # ===== 遅延のみ通知 =====
+    # ===== 遅延のみ =====
     if diff_min <= 0:
         continue
 
@@ -166,16 +117,18 @@ for f in res.get("data", []):
     # ===== 航空会社 =====
     airline_name = airline.get("name")
     if not airline_name:
-        code = flight.get("iata", "")[:2]
+        code = (flight.get("iata") or "")[:2]
         airline_name = AIRLINE_MAP.get(code, code)
 
     # ===== 便名 =====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
+    # ===== 表示（新レイアウト）=====
     msg += (
-        f"✅ {flight_no} | {city}（{airline_name}）\n"
+        f"✈️ {airline_name} {flight_no} | {city}\n"
+        f"到着ターミナル: T{terminal}\n"
         f"定刻: {scheduled_time} → {estimated_time}\n"
-        f"{diff_min}分遅延 / {status} / T{terminal}\n\n"
+        f"{diff_min}分遅延\n\n"
     )
 
 if found:
