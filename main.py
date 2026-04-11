@@ -232,7 +232,7 @@ for f in res.get("data", []):
 
     # ===== 強調表示 =====
     msg += (
-        f"✈️ 【{airline_name}】{flight_no} | {city}\n"
+        f"【{airline_name}】{flight_no} | {city}\n"
         f"到着ターミナル: T{terminal}\n"
         f"定刻: {scheduled_time} → {estimated_time}\n"
         f"{diff_min}分遅延\n\n"
