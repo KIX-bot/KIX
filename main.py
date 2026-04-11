@@ -82,7 +82,7 @@ for f in res.get("data", []):
     if not is_target_arrival(sched_dt.time()):
         continue
 
-    # ===== 重複排除 =====
+    # 重複排除
     key = (scheduled, dep.get("iata"))
     if key in seen:
         continue
@@ -123,9 +123,9 @@ for f in res.get("data", []):
     # ===== 便名 =====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
-    # ===== 表示（新レイアウト）=====
+    # ===== 強調表示 =====
     msg += (
-        f"✈️ {airline_name} {flight_no} | {city}\n"
+        f"✈️ 【{airline_name}】{flight_no} | {city}\n"
         f"到着ターミナル: T{terminal}\n"
         f"定刻: {scheduled_time} → {estimated_time}\n"
         f"{diff_min}分遅延\n\n"
