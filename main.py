@@ -22,6 +22,7 @@ def send_line(msg):
 def is_target_arrival(t):
     return t >= time(21, 0) or t <= time(2, 0)
 
+# ===== 都市（日本語）=====
 CITY_MAP = {
     "HND": "東京（羽田）",
     "NRT": "東京（成田）",
@@ -32,21 +33,28 @@ CITY_MAP = {
     "ICN": "ソウル（仁川）",
     "TPE": "台北（桃園）",
     "PVG": "上海（浦東）",
-    "SIN": "シンガポール",
-    "LAX": "ロサンゼルス",
-    "CNS": "ケアンズ",
-    "SYD": "シドニー",
-    "BKK": "バンコク",
-    "HKG": "香港",
-    "DXB": "ドバイ",
-    "CDG": "パリ",
-    "LHR": "ロンドン"
+    "SIN": "シンガポール"
 }
 
+# ===== ステータス =====
 STATUS_MAP = {
     "active": "運行中",
     "landed": "到着済み",
     "scheduled": "定刻"
+}
+
+# ===== 航空会社（重要）=====
+AIRLINE_MAP = {
+    "NH": ("ANA", "🟦"),
+    "JL": ("JAL", "🔴"),
+    "NU": ("JTA", "🔴"),
+    "GK": ("Jetstar", "🟧"),
+    "MM": ("Peach", "🟪"),
+    "APJ": ("Peach", "🟪"),
+    "OZ": ("Asiana", "🟥"),
+    "SQ": ("Singapore", "🟨"),
+    "CI": ("China Airlines", "🟩"),
+    "BR": ("EVA", "🟩")
 }
 
 url = "http://api.aviationstack.com/v1/flights"
@@ -80,6 +88,7 @@ for f in res.get("data", []):
     if not is_target_arrival(sched_dt.time()):
         continue
 
+    # ===== 重複排除 =====
     key = (scheduled, dep.get("iata"))
     if key in seen:
         continue
@@ -103,14 +112,21 @@ for f in res.get("data", []):
     else:
         estimated_time = (sched_dt + timedelta(minutes=delay)).strftime("%H:%M")
 
+    # ===== 都市 =====
     city = CITY_MAP.get(dep.get("iata"), dep.get("iata") or "不明")
+
+    # ===== 便名 =====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
-    # ===== アイコン（重要）=====
-    icon = "⚠️" if delay >= 15 else "✈️"
+    # ===== 航空会社判定 =====
+    prefix = flight_no[:2]
+    airline_name, airline_icon = AIRLINE_MAP.get(prefix, ("その他", "✈️"))
+
+    # ===== 遅延アイコン =====
+    delay_icon = "⚠️" if delay >= 15 else "✈️"
 
     msg += (
-        f"{icon} {flight_no}　{city}\n"
+        f"{delay_icon} {airline_icon} {airline_name} {flight_no}　{city}\n"
         f"{scheduled_time} → {estimated_time}（+{delay}分）\n"
         f"{status}｜T{terminal}\n\n"
     )
