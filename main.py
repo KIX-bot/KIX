@@ -3,7 +3,6 @@ from datetime import datetime, time
 import json
 import os
 
-# ===== 環境変数から読み込み =====
 AVIATION_API_KEY = os.environ.get("AVIATION_API_KEY")
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 USER_ID = os.environ.get("USER_ID")
@@ -36,8 +35,14 @@ found = False
 
 for f in res.get("data", []):
     arr = f.get("arrival", {})
+    flight = f.get("flight", {})
+    dep = f.get("departure", {})
+
     delay = arr.get("delay")
     scheduled = arr.get("scheduled")
+    estimated = arr.get("estimated")
+    terminal = arr.get("terminal") or "?"
+    status = f.get("flight_status", "不明")
 
     if not delay or not scheduled:
         continue
@@ -46,12 +51,21 @@ for f in res.get("data", []):
 
     if is_target_arrival(t):
         found = True
-        mark = "⚠️ " if (t.hour >= 23 or t.hour < 2) else ""
-        
+
+        # 時刻整形
+        scheduled_time = datetime.fromisoformat(scheduled.replace("Z","")).strftime("%H:%M")
+        estimated_time = (
+            datetime.fromisoformat(estimated.replace("Z","")).strftime("%H:%M")
+            if estimated else "??:??"
+        )
+
+        # 出発地（都市名）
+        city = dep.get("airport") or dep.get("iata") or "不明"
+
         msg += (
-            f"{mark}便名: {f['flight']['iata']}\n"
-            f"到着予定: {t.strftime('%H:%M')}\n"
-            f"遅延: {delay}分\n\n"
+            f"✈️ {flight.get('iata')} | {city}\n"
+            f"定刻: {scheduled_time} → {estimated_time}\n"
+            f"遅延: {delay}分 / {status} / T{terminal}\n\n"
         )
 
 if found:
