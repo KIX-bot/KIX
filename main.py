@@ -106,7 +106,7 @@ params = {
 
 res = requests.get(url, params=params).json()
 
-msg = "✈️関西国際空港 到着遅延便✈️\n（21:00〜翌2:00）\n"
+msg = "✈️関西国際空港 到着遅延便✈️\n（21:00〜翌2:00）\n\n"
 found = False
 seen = set()
 
