@@ -131,7 +131,7 @@ for f in res.get("data", []):
     airline_name, airline_icon = AIRLINE_MAP.get(prefix, ("その他", "✈️"))
 
     # ===== 遅延アイコン =====
-    delay_icon = "⚠️" if delay >= 15 else "✈️"
+    delay_icon = "⚠️" if delay >= 20 else ""
 
     msg += (
         f"{delay_icon} {airline_icon} {airline_name} {flight_no}　{city}\n"
