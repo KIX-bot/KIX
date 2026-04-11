@@ -22,7 +22,6 @@ def send_line(msg):
 def is_target_arrival(t):
     return t >= time(21, 0) or t <= time(2, 0)
 
-# ===== 日本語変換（IATAベース）=====
 CITY_MAP = {
     "HND": "東京（羽田）",
     "NRT": "東京（成田）",
@@ -31,18 +30,9 @@ CITY_MAP = {
     "ISG": "石垣",
     "CTS": "札幌（新千歳）",
     "ICN": "ソウル（仁川）",
-    "GMP": "ソウル（金浦）",
     "TPE": "台北（桃園）",
     "PVG": "上海（浦東）",
-    "SIN": "シンガポール",
-    "LAX": "ロサンゼルス",
-    "CNS": "ケアンズ",
-    "SYD": "シドニー",
-    "BKK": "バンコク",
-    "HKG": "香港",
-    "DXB": "ドバイ",
-    "CDG": "パリ",
-    "LHR": "ロンドン"
+    "SIN": "シンガポール"
 }
 
 STATUS_MAP = {
@@ -61,8 +51,6 @@ res = requests.get(url, params=params).json()
 
 msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
 found = False
-
-# ===== 重複排除 =====
 seen = set()
 
 for f in res.get("data", []):
@@ -81,12 +69,9 @@ for f in res.get("data", []):
     except:
         continue
 
-    t = sched_dt.time()
-
-    if not is_target_arrival(t):
+    if not is_target_arrival(sched_dt.time()):
         continue
 
-    # ===== 重複排除（コードシェア対策）=====
     key = (scheduled, dep.get("iata"))
     if key in seen:
         continue
@@ -98,7 +83,6 @@ for f in res.get("data", []):
     terminal = arr.get("terminal") or "1"
     status = STATUS_MAP.get(f.get("flight_status"), "不明")
 
-    # ===== 時刻処理 =====
     scheduled_time = sched_dt.strftime("%H:%M")
 
     if estimated:
@@ -111,19 +95,19 @@ for f in res.get("data", []):
     else:
         estimated_time = (sched_dt + timedelta(minutes=delay)).strftime("%H:%M")
 
-    # ===== 日本語都市 =====
     city = CITY_MAP.get(dep.get("iata"), dep.get("iata") or "不明")
-
-    # ===== 便名（安全）=====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
+    # ===== アイコン（重要）=====
+    icon = "⚠️" if delay >= 15 else "✈️"
+
     msg += (
-        f"✈️ {flight_no} | {city}\n"
-        f"定刻: {scheduled_time} → {estimated_time}\n"
-        f"遅延: {delay}分 / {status} / T{terminal}\n\n"
+        f"{icon} {flight_no}　{city}\n"
+        f"{scheduled_time} → {estimated_time}（+{delay}分）\n"
+        f"{status}｜T{terminal}\n\n"
     )
 
 if found:
-    send_line(msg)
+    send_line(msg.strip())
 else:
     send_line("対象時間帯（21:00〜翌2:00）の遅延便はありません。")
