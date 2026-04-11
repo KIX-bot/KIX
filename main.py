@@ -173,7 +173,7 @@ for f in res.get("data", []):
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
     msg += (
-        f"⭕️ {flight_no} | {city}（{airline_name}）\n"
+        f"✅ {flight_no} | {city}（{airline_name}）\n"
         f"定刻: {scheduled_time} → {estimated_time}\n"
         f"{diff_min}分遅延 / {status} / T{terminal}\n\n"
     )
