@@ -22,7 +22,7 @@ def send_line(msg):
 def is_target_arrival(t):
     return t >= time(21, 0) or t <= time(2, 0)
 
-# ===== 日本語変換 =====
+# ===== 都市 =====
 CITY_MAP = {
     "HND": "東京（羽田）",
     "NRT": "東京（成田）",
@@ -32,9 +32,17 @@ CITY_MAP = {
     "CTS": "札幌（新千歳）",
     "ICN": "ソウル（仁川）",
     "GMP": "ソウル（金浦）",
-    "TPE": "台北（桃園）",
-    "PVG": "上海（浦東）",
-    "SIN": "シンガポール"
+    "TPE": "台北（桃園）"
+}
+
+# ===== 航空会社 =====
+AIRLINE_MAP = {
+    "NH": "ANA",
+    "JL": "JAL",
+    "GK": "Jetstar",
+    "MM": "Peach",
+    "OZ": "アシアナ航空",
+    "KE": "大韓航空"
 }
 
 STATUS_MAP = {
@@ -53,13 +61,13 @@ res = requests.get(url, params=params).json()
 
 msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
 found = False
-
 seen = set()
 
 for f in res.get("data", []):
     arr = f.get("arrival", {})
     dep = f.get("departure", {})
     flight = f.get("flight", {})
+    airline = f.get("airline", {})
 
     delay = arr.get("delay")
     scheduled = arr.get("scheduled")
@@ -75,50 +83,52 @@ for f in res.get("data", []):
     if not is_target_arrival(sched_dt.time()):
         continue
 
+    # 重複排除
     key = (scheduled, dep.get("iata"))
     if key in seen:
         continue
     seen.add(key)
 
-    found = True
-
     estimated = arr.get("estimated")
     terminal = arr.get("terminal") or "1"
     status = STATUS_MAP.get(f.get("flight_status"), "不明")
 
-    # ===== 時刻処理（完全安全版）=====
-    scheduled_time = sched_dt.strftime("%H:%M")
-
-    try:
-        if estimated:
+    # ===== 時刻 =====
+    if estimated:
+        try:
             est_dt = datetime.fromisoformat(estimated.replace("Z",""))
-        else:
+        except:
             est_dt = sched_dt + timedelta(minutes=delay)
-    except:
+    else:
         est_dt = sched_dt + timedelta(minutes=delay)
 
-    estimated_time = est_dt.strftime("%H:%M")
-
-    # ===== 差分計算 =====
     diff_min = int((est_dt - sched_dt).total_seconds() / 60)
 
-    if diff_min > 0:
-        delay_text = f"{diff_min}分遅延"
-    elif diff_min < 0:
-        delay_text = f"{abs(diff_min)}分早着"
-    else:
-        delay_text = "定刻"
+    # ===== 遅延のみ通知 =====
+    if diff_min <= 0:
+        continue
 
-    # ===== 日本語都市 =====
+    found = True
+
+    scheduled_time = sched_dt.strftime("%H:%M")
+    estimated_time = est_dt.strftime("%H:%M")
+
+    # ===== 都市 =====
     city = CITY_MAP.get(dep.get("iata"), dep.get("iata") or "不明")
+
+    # ===== 航空会社 =====
+    airline_name = airline.get("name")
+    if not airline_name:
+        code = flight.get("iata", "")[:2]
+        airline_name = AIRLINE_MAP.get(code, code)
 
     # ===== 便名 =====
     flight_no = flight.get("iata") or flight.get("number") or "不明"
 
     msg += (
-        f"✈️ {flight_no} | {city}\n"
+        f"✈️ {flight_no} | {city}（{airline_name}）\n"
         f"定刻: {scheduled_time} → {estimated_time}\n"
-        f"{delay_text} / {status} / T{terminal}\n\n"
+        f"{diff_min}分遅延 / {status} / T{terminal}\n\n"
     )
 
 if found:
