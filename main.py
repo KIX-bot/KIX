@@ -20,7 +20,7 @@ def send_line(msg):
     requests.post(url, headers=headers, data=json.dumps(data))
 
 def is_target_arrival(t):
-    return t >= time(21, 0) or t <= time(2, 0)
+    return t >= time(22, 0) or t <= time(2, 0)
 
 # ===== 都市（日本語）=====
 CITY_MAP = {
@@ -65,7 +65,7 @@ params = {
 
 res = requests.get(url, params=params).json()
 
-msg = "✈️ 関西国際空港 到着遅延便（21:00〜翌2:00）\n\n"
+msg = "✈️ 関西国際空港 到着遅延便（22:00〜翌2:00）\n\n"
 found = False
 seen = set()
 
@@ -134,4 +134,4 @@ for f in res.get("data", []):
 if found:
     send_line(msg.strip())
 else:
-    send_line("対象時間帯（21:00〜翌2:00）の遅延便はありません。")
+    send_line("対象時間帯（22:00〜翌2:00）の遅延便はありません。")
