@@ -134,9 +134,9 @@ for f in res.get("data", []):
 
     # ===== 遅延アイコン =====
     if delay >= 30:
-        delay_icon = "🚨"
+        delay_icon = ""
     elif delay >= 15:
-        delay_icon = "⚠️"
+        delay_icon = ""
     else:
         delay_icon = ""
 
